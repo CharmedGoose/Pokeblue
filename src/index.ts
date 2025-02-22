@@ -1,8 +1,6 @@
-import { SapphireClient } from "@sapphire/framework";
-import { GatewayIntentBits } from "discord.js";
+import { PokeblueClient } from "#lib/PokeblueClient";
+import '@sapphire/plugin-logger/register';
 
-const client = new SapphireClient({
-	intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
-});
+const client = new PokeblueClient();
 
 client.login(process.env.TOKEN);
