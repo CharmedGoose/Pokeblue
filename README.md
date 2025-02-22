@@ -1,15 +1,23 @@
-# pokeblue
+# Pokéblue
 
-To install dependencies:
+## Contributing
 
-```bash
-bun install
-```
+1. Clone the repository:
 
-To run:
+    ```bash
+    git clone https://github.com/CharmedGoose/Pokeblue.git
+    ```
 
-```bash
-bun run src/index.ts
-```
+1. Install dependencies:
 
-This project was created using `bun init` in bun v1.2.2. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
+    ```bash
+    bun install
+    ```
+
+1. Fill in `.env`
+
+1. Start the bot:
+
+    ```bash
+    bun dev
+    ```
