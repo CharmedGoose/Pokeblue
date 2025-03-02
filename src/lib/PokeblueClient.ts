@@ -17,17 +17,18 @@ export class PokeblueClient extends SapphireClient {
 			},
 			logger: {
 				level:
-					process.env.DEBUG == "1"
-						? LogLevel.Debug
-						: LogLevel.Info,
+					process.env.DEBUG == "1" ? LogLevel.Debug : LogLevel.Info,
 			},
 		});
 	}
 
 	public override async login(token?: string) {
 		container.pokedex = new Pokedex();
-		container.version = await $`git rev-parse --short HEAD`.text();
-		container.branch = (await $`git branch --show-current`.text()).trim();
+
+		const commitHash = await $`git rev-parse --short HEAD`.text();
+		const branch = (await $`git branch --show-current`.text()).trim();
+		container.embedFooter = `${branch}@${commitHash}`;
+		
 		return super.login(token);
 	}
 }
@@ -35,7 +36,6 @@ export class PokeblueClient extends SapphireClient {
 declare module "@sapphire/pieces" {
 	interface Container {
 		pokedex: Pokedex;
-		version: string;
-		branch: string;
+		embedFooter: string;
 	}
 }
