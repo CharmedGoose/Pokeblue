@@ -23,6 +23,8 @@ export class PokeblueClient extends SapphireClient {
 	}
 
 	public override async login(token?: string) {
+		container.debug = process.env.DEBUG === "1";
+
 		container.pokedex = new Pokedex();
 
 		const commitHash = await $`git rev-parse --short HEAD`.text();
@@ -35,6 +37,7 @@ export class PokeblueClient extends SapphireClient {
 
 declare module "@sapphire/pieces" {
 	interface Container {
+		debug: boolean;
 		pokedex: Pokedex;
 		embedFooter: string;
 	}
