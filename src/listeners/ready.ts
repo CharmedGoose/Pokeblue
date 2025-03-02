@@ -1,5 +1,4 @@
 import { Listener } from "@sapphire/framework";
-import { Client } from "discord.js";
 
 export class ReadyListener extends Listener {
 	public constructor(
@@ -12,10 +11,15 @@ export class ReadyListener extends Listener {
 			event: "ready",
 		});
 	}
-	public run(client: Client) {
-		const { tag } = client.user!;
+	public run() {
 		this.container.logger.info(
-			`Successfully logged in as ${tag}`,
+			String.raw` ____       _        _     _            
+|  _ \ ___ | | _____| |__ | |_   _  ___ 
+| |_) / _ \| |/ / _ \ '_ \| | | | |/ _ \
+|  __/ (_) |   <  __/ |_) | | |_| |  __/
+|_|   \___/|_|\_\___|_.__/|_|\__,_|\___| ${process.env.DEBUG === "1" ? "DEBUG MODE" : ""}
+`,
 		);
+		this.container.logger.debug("hai!");
 	}
 }
