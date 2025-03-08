@@ -3,4 +3,4 @@ import "@sapphire/plugin-logger/register";
 
 const client = new PokeblueClient();
 
-client.login(process.env.TOKEN);
+client.login(process.env.DISCORD_TOKEN);

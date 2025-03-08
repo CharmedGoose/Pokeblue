@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { container } from "@sapphire/framework";
@@ -25,27 +25,26 @@ export async function decodeGIFFramesFromURL(
 	url: string,
 ): Promise<GifFrameReadableStream[]> {
 	const response = await fetch(url);
-	const buffer = Buffer.from(await response.arrayBuffer());
+	const responseBuffer = Buffer.from(await response.arrayBuffer());
 
 	const tmpPath = join(tmpdir(), `${Bun.randomUUIDv7()}.gif`);
-	await Bun.write(tmpPath, buffer);
+	await Bun.write(tmpPath, responseBuffer);
 
 	const gifsicle = Bun.spawn({
-		cmd: ["gifsicle", "-b", "--unoptimize", tmpPath],
+		cmd: ["gifsicle", "--batch", "--unoptimize", tmpPath],
 		stdout: null,
 	});
-
 	if ((await gifsicle.exited) != 0) {
 		throw new Error(new TextDecoder().decode(gifsicle.stderr));
 	}
 
 	const gif = await gifFrames({
-		url: await readFile(tmpPath),
+		url: Buffer.from(await Bun.file(tmpPath).arrayBuffer()),
 		frames: "all",
 		outputType: "png",
 	});
 
-	await rm(tmpPath, { recursive: true, force: true });
+	await Bun.file(tmpPath).delete();
 
 	return gif;
 }
@@ -54,45 +53,50 @@ export async function createGIF(
 	width: number,
 	height: number,
 	gifs: GIFs[],
-	bg?: string,
-): Promise<Buffer> {
+	background?: string,
+): Promise<ArrayBuffer> {
 	const tmpPath = await mkdtemp(join(tmpdir(), "gif-"));
 
 	const totalTime = Date.now();
 
-	const roundedFrames = gifs.map(
+	const roundedToEvenFrames = gifs.map(
 		(gif) => 2 * Math.round(gif.frames.length / 2),
 	);
-	const totalFrames = Math.floor(lcm(roundedFrames) / FRAME_SKIP);
+	const totalFrames = Math.floor(lcm(roundedToEvenFrames) / FRAME_SKIP);
 
 	const currentFrames: number[] = Array(gifs.length).fill(0);
 
-	const image = sharp({
-		create: {
-			width,
-			height,
-			channels: 4,
-			background: { r: 0, g: 0, b: 0, alpha: 0 },
-		},
-	});
+	let image;
+	if (background) {
+		image = sharp(background).resize(width, height, { kernel: "nearest" });
+	} else {
+		image = sharp({
+			create: {
+				width,
+				height,
+				channels: 4,
+				background: { r: 0, g: 0, b: 0, alpha: 0 },
+			},
+		});
+	}
 
 	container.logger.debug(`Creating GIF with ${totalFrames} frames`);
 	let time = Date.now();
 
 	for (let frame = 0; frame < totalFrames; frame++) {
-		if (container.debug) {
+		if (process.env.DEBUG) {
 			process.stdout.write(`\rFrame: ${frame + 1}/${totalFrames}`);
 		}
 
 		const currentImage = image.clone();
 
-		const images: Promise<sharp.OverlayOptions>[] = [];
+		const imagesToDraw: Promise<sharp.OverlayOptions>[] = [];
 
 		for (let i = 0; i < gifs.length; i++) {
 			const gif = gifs[i];
 			const currentFrame = gif.frames[currentFrames[i]];
 
-			images.push(drawFrame(currentFrame, gif));
+			imagesToDraw.push(drawFrame(currentFrame, gif));
 
 			currentFrames[i] += FRAME_SKIP;
 			if (currentFrames[i] >= gif.frames.length) {
@@ -102,11 +106,11 @@ export async function createGIF(
 
 		const paddedFrame = frame.toString().padStart(4, "0");
 		await currentImage
-			.composite(await Promise.all(images))
+			.composite(await Promise.all(imagesToDraw))
 			.toFile(join(tmpPath, `${paddedFrame}.gif`));
 	}
 
-	if (container.debug) {
+	if (process.env.DEBUG) {
 		process.stdout.clearLine(0);
 		process.stdout.cursorTo(0);
 	}
@@ -115,7 +119,7 @@ export async function createGIF(
 	container.logger.debug("Encoding GIF");
 	time = Date.now();
 
-	const outputPath = join(tmpPath, "output.gif");
+	const outputGIFPath = join(tmpPath, "output.gif");
 
 	const gif = Bun.spawn({
 		cmd: [
@@ -123,60 +127,23 @@ export async function createGIF(
 			`--delay=${DELAY}`,
 			"--disposal=background",
 			join(tmpPath, "*.gif"),
-			"--loop=0",
-			"--colors=256",
+			"--colors=128",
+			"--optimize=3",
+			"--lossy=200",
+			"--no-extensions",
+			"--no-comments",
 			"--output",
-			outputPath,
+			outputGIFPath,
 		],
 		stdout: null,
 	});
-
 	if ((await gif.exited) != 0) {
 		throw new Error(new TextDecoder().decode(gif.stderr));
 	}
 
 	container.logger.debug(`GIF encoded in ${Date.now() - time}ms`);
-	container.logger.debug("Adding background to GIF");
-	time = Date.now();
 
-	if (bg) {
-		const background = await sharp(bg)
-			.resize(width, height, { kernel: "nearest" })
-			.toBuffer();
-
-		const overlayedGif = await overlayGIF(
-			background,
-			await readFile(outputPath),
-		);
-		await overlayedGif.toFile(outputPath);
-	}
-
-	container.logger.debug(`Background finished, took ${Date.now() - time}ms`);
-
-	container.logger.debug("Optimizing GIF");
-	time = Date.now();
-
-	const optimized = Bun.spawn({
-		cmd: [
-			"gifsicle",
-			"--batch",
-			"--optimize=2",
-			"--lossy=100",
-			"--colors=256",
-			"--no-app-extensions",
-			"--no-comments",
-			outputPath,
-		],
-		stdout: null,
-	});
-
-	if ((await optimized.exited) != 0) {
-		throw new Error(new TextDecoder().decode(optimized.stderr));
-	}
-
-	container.logger.debug(`GIF optimized in ${Date.now() - time}ms`);
-
-	const output = await readFile(outputPath);
+	const output = await Bun.file(outputGIFPath).arrayBuffer();
 	await rm(tmpPath, { recursive: true, force: true });
 
 	container.logger.debug(`GIF created in ${Date.now() - totalTime}ms`);
@@ -218,34 +185,58 @@ async function drawFrame(
 	};
 }
 
-export async function overlayGIF(
-	background: Buffer,
-	gifOverlay: Buffer,
-): Promise<sharp.Sharp> {
-	const overlay = sharp(gifOverlay, { animated: true });
-	const metadata = await overlay.metadata();
-	const backgroundImage = sharp(background).resize(
-		metadata.width,
-		metadata.pageHeight,
-		{
-			kernel: "nearest",
-		},
+export function getPublicGIFURL(gif: string): string {
+	return new URL(`./images/${gif}`, new URL(process.env.S3_PUBLIC_URL!)).href;
+}
+
+export async function createStarterGIF(): Promise<string> {
+	if (await Bun.s3.exists("images/starters.gif")) {
+		return getPublicGIFURL("starters.gif");
+	}
+
+	const bulbasaurFrames = await decodeGIFFramesFromURL(
+		"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/1.gif",
 	);
-	const imageRoll = backgroundImage.extend({
-		bottom: (metadata.pageHeight || 0) * ((metadata.pages || 0) - 1),
-		extendWith: "repeat",
-	});
-	const result = imageRoll
-		.composite([
+	const charmanderFrames = await decodeGIFFramesFromURL(
+		"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/4.gif",
+	);
+	const squirtleFrames = await decodeGIFFramesFromURL(
+		"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/7.gif",
+	);
+
+	const gifBuffer = await createGIF(
+		1000,
+		500,
+		[
 			{
-				input: await overlay.toBuffer(),
-				animated: true,
+				frames: bulbasaurFrames,
+				x: 250,
+				y: 450,
+				widthMultiplier: 4,
+				heightMultiplier: 4,
+				bottomCenterPivot: true,
 			},
-		])
-		.gif({
-			progressive: metadata.isProgressive,
-			delay: metadata.delay,
-			loop: metadata.loop,
-		});
-	return result;
+			{
+				frames: charmanderFrames,
+				x: 500,
+				y: 450,
+				widthMultiplier: 4,
+				heightMultiplier: 4,
+				bottomCenterPivot: true,
+			},
+			{
+				frames: squirtleFrames,
+				x: 750,
+				y: 450,
+				widthMultiplier: 4,
+				heightMultiplier: 4,
+				bottomCenterPivot: true,
+			},
+		],
+		"./src/assets/starterBackground.jpg",
+	);
+
+	await Bun.s3.write("images/starters.gif", gifBuffer);
+
+	return getPublicGIFURL("starters.gif");
 }

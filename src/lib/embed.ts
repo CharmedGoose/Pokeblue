@@ -1,14 +1,15 @@
 import { container } from "@sapphire/framework";
 import { EmbedBuilder } from "discord.js";
 
-export function createErrorEmbed(
-	message: string,
-): EmbedBuilder {
-	return new EmbedBuilder()
+export class PokeblueEmbed extends EmbedBuilder {
+	public constructor() {
+		super({ color: 0x0099ff, footer: { text: container.embedFooter } });
+	}
+}
+
+export function createErrorEmbed(message: string): EmbedBuilder {
+	return new PokeblueEmbed()
 		.setColor("Red")
 		.setTitle("ERROR")
 		.setDescription(message)
-		.setFooter({
-			text: container.embedFooter,
-		});
 }
