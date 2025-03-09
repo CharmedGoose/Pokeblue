@@ -1,23 +1,31 @@
 {
-  "name": "pokeblue",
-  "main": "src/index.ts",
-  "module": "src/index.ts",
-  "type": "module",
-  "scripts": {
-    "dev": "bun --watch run src/index.ts"
-  },
-  "devDependencies": {
-    "@sapphire/eslint-config": "^5.0.5",
-    "@sapphire/prettier-config": "^2.0.0",
-    "@sapphire/ts-config": "^5.0.1",
-    "@types/bun": "latest",
-    "eslint": "^9.20.1"
-  },
-  "peerDependencies": {
-    "typescript": "^5.0.0"
-  },
-  "dependencies": {
-    "@sapphire/framework": "^5.3.2",
-    "discord.js": "^14.18.0"
-  }
+	"name": "pokeblue",
+	"main": "src/index.ts",
+	"module": "src/index.ts",
+	"type": "module",
+	"scripts": {
+		"dev": "bun --watch run ./src/index.ts"
+	},
+	"devDependencies": {
+		"@eslint/js": "^9.20.0",
+		"@types/bun": "latest",
+		"@types/fluent-ffmpeg": "^2.1.27",
+		"eslint": "^9.20.1",
+		"eslint-config-prettier": "^10.0.1",
+		"typescript-eslint": "^8.24.1"
+	},
+	"peerDependencies": {
+		"typescript": "^5.7.3"
+	},
+	"dependencies": {
+		"@sapphire/framework": "^5.3.2",
+		"@sapphire/plugin-logger": "^4.0.2",
+		"discord.js": "^14.18.0",
+		"gif-frames": "github:benwiley4000/gif-frames",
+		"pokedex-promise-v2": "^4.2.1",
+		"sharp": "^0.33.5"
+	},
+	"imports": {
+		"#lib/*": "./src/lib/*.ts"
+	}
 }
