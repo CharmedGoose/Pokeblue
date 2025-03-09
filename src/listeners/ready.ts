@@ -17,7 +17,7 @@ export class ReadyListener extends Listener {
 |  _ \ ___ | | _____| |__ | |_   _  ___ 
 | |_) / _ \| |/ / _ \ '_ \| | | | |/ _ \
 |  __/ (_) |   <  __/ |_) | | |_| |  __/
-|_|   \___/|_|\_\___|_.__/|_|\__,_|\___| ${this.container.debug? "DEBUG MODE" : ""}
+|_|   \___/|_|\_\___|_.__/|_|\__,_|\___| ${process.env.DEBUG ? "DEBUG MODE" : ""}
 `,
 		);
 		this.container.logger.debug("hai!");

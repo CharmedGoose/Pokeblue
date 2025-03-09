@@ -20,6 +20,7 @@
 		"noFallthroughCasesInSwitch": true,
 
 		"paths": {
+			"#db/*": ["./src/db/*.ts"],
 			"#lib/*": ["./src/lib/*.ts"]
 		}
 	}
