@@ -5,6 +5,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "bun --watch run ./src/index.ts",
+		"prepare": "husky install",
 		"scripts:clearAllCommands": "bun ./scripts/clearAllCommands.ts"
 	},
 	"devDependencies": {
@@ -13,6 +14,7 @@
 		"drizzle-kit": "^0.30.5",
 		"eslint": "^9.20.1",
 		"eslint-config-prettier": "^10.0.1",
+		"prettier": "3.5.3",
 		"typescript-eslint": "^8.24.1"
 	},
 	"peerDependencies": {
@@ -31,5 +33,9 @@
 	"imports": {
 		"#db/*": "./src/db/*.ts",
 		"#lib/*": "./src/lib/*.ts"
+	},
+	"lint-staged": {
+		"*.ts": "eslint --cache --fix",
+		"*.{ts,css,md}": "prettier --write"
 	}
 }
