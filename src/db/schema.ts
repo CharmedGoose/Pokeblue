@@ -15,3 +15,11 @@ export const pokemons = pgTable("pokemons", {
 		.references(() => users.id),
 	createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+export const guilds = pgTable("guilds", {
+	id: text("id").primaryKey(),
+	spawnChannel: text("spawn_channel").notNull(),
+	minSpawnTime: text("min_spawn_time").notNull(),
+	maxSpawnTime: text("max_spawn_time").notNull(),
+	createdAt: timestamp("created_at").notNull().defaultNow(),
+});
