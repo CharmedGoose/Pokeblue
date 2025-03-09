@@ -80,7 +80,9 @@ export async function createGIF(
 	let time = Date.now();
 
 	for (let frame = 0; frame < totalFrames; frame++) {
-		process.stdout.write(`\rFrame: ${frame + 1}/${totalFrames}`);
+		if (container.debug) {
+			process.stdout.write(`\rFrame: ${frame + 1}/${totalFrames}`);
+		}
 
 		const currentImage = image.clone();
 
@@ -104,8 +106,10 @@ export async function createGIF(
 			.toFile(join(tmpPath, `${paddedFrame}.gif`));
 	}
 
-	process.stdout.clearLine(0);
-	process.stdout.cursorTo(0);
+	if (container.debug) {
+		process.stdout.clearLine(0);
+		process.stdout.cursorTo(0);
+	}
 
 	container.logger.debug(`Frames created in ${Date.now() - time}ms`);
 	container.logger.debug("Encoding GIF");
