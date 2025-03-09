@@ -5,7 +5,9 @@
 	"type": "module",
 	"scripts": {
 		"dev": "bun --watch run ./src/index.ts",
-		"prepare": "husky install",
+		"prepare": "husky",
+		"drizzle:generate": "drizzle-kit generate --config=drizzle.config.ts",
+		"drizzle:migrate": "drizzle-kit migrate --config=drizzle.config.ts",
 		"scripts:clearAllCommands": "bun ./scripts/clearAllCommands.ts"
 	},
 	"devDependencies": {
