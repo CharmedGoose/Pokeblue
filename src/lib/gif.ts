@@ -1,8 +1,8 @@
 import { GIFEncoder, quantize, applyPalette } from "gifenc";
 import { Stream } from "node:stream";
+import { container } from "@sapphire/framework";
 import gifFrames, { type GifFrameReadableStream } from "gif-frames";
 import sharp from "sharp";
-import { container } from "@sapphire/framework";
 
 const FRAME_SKIP = 3;
 
@@ -140,7 +140,7 @@ export async function createGIF(
 	}
 
 	container.logger.debug(
-		`Background finished. Took ${Date.now() - time}ms\nGIF created in ${Date.now() - totalTime}ms`,
+		`Background finished, took ${Date.now() - time}ms\nGIF created in ${Date.now() - totalTime}ms`,
 	);
 
 	return result;
