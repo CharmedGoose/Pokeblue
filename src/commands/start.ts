@@ -162,7 +162,7 @@ export class SartCommand extends Command {
 		const success = new PokeblueEmbed()
 			.setTitle("Welcome to Pokéblue!")
 			.setDescription(
-				`You have selected ${starter} as your starter!\nYou can now start catching pokémons!`,
+				`You have selected ${starter} as your starter!\nYou can now start catching Pokémons!`,
 			);
 
 		nameInteraction.editReply({
