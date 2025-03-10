@@ -35,6 +35,7 @@
 		"sharp": "^0.33.5"
 	},
 	"imports": {
+		"#config": "./src/config.ts",
 		"#db/*": "./src/db/*.ts",
 		"#lib/*": "./src/lib/*.ts"
 	},

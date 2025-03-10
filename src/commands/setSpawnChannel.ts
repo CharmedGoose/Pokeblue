@@ -3,6 +3,14 @@ import { ChannelType } from "discord.js";
 import { Command } from "@sapphire/framework";
 import { guilds } from "#db/schema";
 import { eq } from "drizzle-orm";
+import {
+	MIN_SPAWN_TIME,
+	MIN_TIME_BETWEEN_SPAWNS,
+	DEFAULT_MIN_SPAWN_TIME,
+	DEFAULT_MAX_SPAWN_TIME,
+} from "#config";
+
+const MIN_MAX_SPAWN_TIME = MIN_SPAWN_TIME + MIN_TIME_BETWEEN_SPAWNS;
 
 export class SetSpawnCommand extends Command {
 	public constructor(
@@ -35,17 +43,17 @@ export class SetSpawnCommand extends Command {
 					option
 						.setName("mintime")
 						.setDescription(
-							"The minimum time between Pokémon spawns in seconds (min 300). Default is 300",
+							`The minimum time between Pokémon spawns in seconds (min ${MIN_SPAWN_TIME}). Default is ${DEFAULT_MIN_SPAWN_TIME}`,
 						)
-						.setMinValue(300),
+						.setMinValue(MIN_SPAWN_TIME),
 				)
 				.addIntegerOption((option) =>
 					option
 						.setName("maxtime")
 						.setDescription(
-							"The maximum time between Pokémon spawns in seconds (min 360). Default is 360",
+							`The maximum time between Pokémon spawns in seconds (min ${MIN_MAX_SPAWN_TIME}). Default is ${DEFAULT_MAX_SPAWN_TIME}`,
 						)
-						.setMinValue(360),
+						.setMinValue(MIN_MAX_SPAWN_TIME),
 				),
 		);
 	}
@@ -65,13 +73,15 @@ export class SetSpawnCommand extends Command {
 			});
 		}
 
-		const minTime = interaction.options.getInteger("mintime") || 300;
-		const maxTime = interaction.options.getInteger("maxtime") || 360;
-		if (minTime > maxTime + 60) {
+		const minTime =
+			interaction.options.getInteger("mintime") || DEFAULT_MIN_SPAWN_TIME;
+		const maxTime =
+			interaction.options.getInteger("maxtime") || DEFAULT_MAX_SPAWN_TIME;
+		if (minTime > maxTime + MIN_TIME_BETWEEN_SPAWNS) {
 			return interaction.reply({
 				embeds: [
 					createErrorEmbed(
-						"The minimum time between Pokémon spawns must be less than the maximum time by 60 seconds",
+						`The minimum time between Pokémon spawns must be less than the maximum time by ${MIN_TIME_BETWEEN_SPAWNS} seconds`,
 					),
 				],
 				flags: ["Ephemeral"],

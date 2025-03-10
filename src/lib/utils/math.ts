@@ -1,3 +1,5 @@
+import { GIF_FRAME_SKIP } from "#config";
+
 export function gcd(a: number, b: number): number {
 	if (!b) return b === 0 ? a : NaN;
 	return gcd(b, a % b);
@@ -11,10 +13,7 @@ export function lcm2(a: number, b: number): number {
 	return (a * b) / gcd(a, b);
 }
 
-export function getLowestTotalGIFFrames(
-	gifLengths: number[],
-	frameSkip: number,
-): number {
+export function getLowestTotalGIFFrames(gifLengths: number[]): number {
 	const roundedFrames = [];
 	for (let i = 1; i < 11; i++) {
 		roundedFrames.push(
@@ -24,7 +23,7 @@ export function getLowestTotalGIFFrames(
 
 	const totalFrames = [];
 	for (let i = 0; i < roundedFrames.length; i++) {
-		totalFrames.push(Math.floor(lcm(roundedFrames[i]) / frameSkip));
+		totalFrames.push(Math.floor(lcm(roundedFrames[i]) / GIF_FRAME_SKIP));
 	}
 
 	return Math.min(...totalFrames);

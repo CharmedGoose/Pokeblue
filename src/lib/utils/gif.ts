@@ -1,15 +1,13 @@
+import { container } from "@sapphire/framework";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { container } from "@sapphire/framework";
-import { streamToBuffer } from "#lib/utils/stream";
 import { PokemonGenerationStarters } from "#lib/pokemon";
 import { getLowestTotalGIFFrames } from "#lib/utils/math";
+import { streamToBuffer } from "#lib/utils/stream";
+import { GIF_DELAY, GIF_FRAME_SKIP } from "#config";
 import gifFrames, { type GifFrameReadableStream } from "gif-frames";
 import sharp from "sharp";
-
-const FRAME_SKIP = 3;
-const DELAY = (5 * FRAME_SKIP).toString();
 
 export interface GIFs {
 	frames: GifFrameReadableStream[];
@@ -70,7 +68,6 @@ export async function createGIF(
 
 	const totalFrames = getLowestTotalGIFFrames(
 		gifs.map((gif) => gif.frames.length),
-		FRAME_SKIP,
 	);
 
 	const currentFrames: number[] = Array(gifs.length).fill(0);
@@ -107,7 +104,7 @@ export async function createGIF(
 
 			imagesToDraw.push(drawFrame(currentFrame, gif));
 
-			currentFrames[i] += FRAME_SKIP;
+			currentFrames[i] += GIF_FRAME_SKIP;
 			if (currentFrames[i] >= gif.frames.length) {
 				currentFrames[i] = 0;
 			}
@@ -133,7 +130,7 @@ export async function createGIF(
 	const gif = Bun.spawn({
 		cmd: [
 			"gifsicle",
-			`--delay=${DELAY}`,
+			`--delay=${GIF_DELAY}`,
 			"--disposal=background",
 			join(tmpPath, "*.gif"),
 			"--colors=128",
