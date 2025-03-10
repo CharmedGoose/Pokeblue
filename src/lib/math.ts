@@ -7,6 +7,25 @@ export function lcm(array: number[]): number {
 	for (let i = 0; i < array.length; ++i) n = lcm2(array[i], n);
 	return n;
 }
-function lcm2(a: number, b: number): number {
+export function lcm2(a: number, b: number): number {
 	return (a * b) / gcd(a, b);
+}
+
+export function getLowestTotalGIFFrames(
+	gifLengths: number[],
+	frameSkip: number,
+): number {
+	const roundedFrames = [];
+	for (let i = 1; i < 11; i++) {
+		roundedFrames.push(
+			gifLengths.map((length) => Math.round(length / i) * i),
+		);
+	}
+
+	const totalFrames = [];
+	for (let i = 0; i < roundedFrames.length; i++) {
+		totalFrames.push(Math.floor(lcm(roundedFrames[i]) / frameSkip));
+	}
+
+	return Math.min(...totalFrames);
 }

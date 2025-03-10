@@ -1,25 +1,24 @@
 import { Command } from "@sapphire/framework";
 import { eq } from "drizzle-orm";
+import { ComponentType } from "discord.js";
 import {
-	ActionRowBuilder,
-	ButtonBuilder,
-	ButtonStyle,
-	ModalBuilder,
-	TextInputBuilder,
-	TextInputStyle,
-} from "discord.js";
+	createPokemonGenerationSelectRow,
+	createStarterPokemonButtonRow,
+} from "#lib/actionRow";
+import { createStarterGIF, getPublicGIFURL } from "#lib/gif";
 import { PokeblueEmbed, createErrorEmbed } from "#lib/embed";
-import { createStarterGIF } from "#lib/gif";
+import { PokemonGenerationStarters } from "#lib/pokemon";
 import { pokemons, users } from "#db/schema";
+import { createNameModal } from "#lib/modal";
 
-export class SartCommand extends Command {
+export class StartCommand extends Command {
 	public constructor(
 		context: Command.LoaderContext,
 		options: Command.Options,
 	) {
 		super(context, {
 			...options,
-			requiredClientPermissions: ["SendMessages", "AttachFiles"],
+			requiredClientPermissions: ["SendMessages"],
 			requiredUserPermissions: ["UseApplicationCommands"],
 		});
 	}
@@ -33,204 +32,234 @@ export class SartCommand extends Command {
 	public override async chatInputRun(
 		interaction: Command.ChatInputCommandInteraction,
 	) {
-		const user = await this.container.db
+		const dbUser = await this.container.db
 			.select()
 			.from(users)
 			.where(eq(users.id, interaction.user.id));
-
-		if (user.length > 0) {
+		if (dbUser.length > 0) {
 			return await interaction.reply({
-				embeds: [createErrorEmbed("You have already have a account!")],
+				embeds: [
+					createErrorEmbed(
+						`"What are you doing here? You already have a pokemon!" said the professor`,
+					),
+				],
 				flags: ["Ephemeral"],
 			});
 		}
 
-		await interaction.showModal(
-			createNameModal(
-				"What's your name?",
-				"playerNameModal",
-				"playerNameInput",
-				interaction.user.displayName,
-			),
-		);
+		const user = interaction.user;
 
-		const nameInteraction = await interaction.awaitModalSubmit({
-			filter: (i) => i.customId === "playerNameModal",
-			time: 3_600_000,
-		});
+		await interaction.showModal(
+			createNameModal("What's your name?", "player", user.displayName),
+		);
+		const nameInteraction = await interaction
+			.awaitModalSubmit({
+				filter: (i) => i.customId === "playerNameModal",
+				time: 600_000,
+			})
+			.catch(async () => {
+				await interaction.reply({
+					embeds: [
+						createErrorEmbed(
+							`"You had 10 minutes to choose a name and you couldn't think of one?" said the professor \nRun \`/start\` to start again`,
+						),
+					],
+					flags: ["Ephemeral"],
+				});
+			});
+		if (!nameInteraction) return;
 
 		let name = nameInteraction.fields.getTextInputValue("playerNameInput");
-		if (!name) name = nameInteraction.user.displayName;
+		if (!name) name = user.displayName;
+
+		const gettingStartersEmbed = new PokeblueEmbed()
+			.setTitle("Welcome to Pokéblue!")
+			.setDescription("Getting starters please wait...");
 
 		const response = await nameInteraction.reply({
-			content: "Getting starters please wait...",
+			embeds: [gettingStartersEmbed],
 			withResponse: true,
 		});
+		if (!response.resource?.message) {
+			return await nameInteraction.editReply({
+				embeds: [createErrorEmbed("Something went wrong")],
+			});
+		}
 
-		const gifURL = await createStarterGIF().catch(async (err) => {
+		const gifURL = await createStarterGIF("1").catch(async (err) => {
 			this.container.logger.error(err);
 			await nameInteraction.editReply({
-				content: null,
-				embeds: [createErrorEmbed("Failed to get starter GIF")],
+				embeds: [createErrorEmbed("Failed to get starters")],
 			});
 		});
 		if (!gifURL) return;
 
 		const starterEmbed = new PokeblueEmbed()
 			.setTitle("Welcome to Pokéblue!")
-			.setDescription("Please select your starter")
+			.setDescription("Choose your starter")
 			.setImage(gifURL);
 
 		await nameInteraction.editReply({
-			content: null,
 			embeds: [starterEmbed],
-			components: [createStarterButtons()],
+			components: [
+				createPokemonGenerationSelectRow(),
+				createStarterPokemonButtonRow(),
+			],
 		});
 
-		const starterInteraction = await response.resource?.message
-			?.awaitMessageComponent({
-				filter: (i) => i.user.id === nameInteraction.user.id,
-				time: 3_600_000,
-			})
-			.catch(async () => {
-				await nameInteraction.editReply({
-					content: null,
-					embeds: [createErrorEmbed("Timed out")],
+		let currentGeneration = "1";
+
+		const generationCollector =
+			response.resource.message.createMessageComponentCollector({
+				componentType: ComponentType.StringSelect,
+				filter: (i) => i.user.id === user.id,
+				time: 870_000,
+			});
+
+		generationCollector.on("collect", async (selectInteraction) => {
+			await selectInteraction.deferUpdate();
+
+			const selection = selectInteraction.values[0];
+
+			const gifPath = `starters-${selection}.gif`;
+
+			let gifURL: string | void;
+			if (await Bun.s3.exists(`images/${gifPath}`)) {
+				gifURL = getPublicGIFURL(gifPath);
+			} else {
+				await selectInteraction.editReply({
+					embeds: [gettingStartersEmbed],
 					components: [],
 				});
+
+				gifURL = await createStarterGIF(selection).catch(
+					async (err) => {
+						this.container.logger.error(err);
+						await selectInteraction.editReply({
+							embeds: [starterEmbed],
+							components: [
+								createPokemonGenerationSelectRow(
+									currentGeneration,
+								),
+								createStarterPokemonButtonRow(),
+							],
+						});
+						await selectInteraction.followUp({
+							embeds: [
+								createErrorEmbed("Failed to get starters"),
+							],
+							flags: ["Ephemeral"],
+						});
+					},
+				);
+			}
+			if (!gifURL) return;
+
+			await selectInteraction.editReply({
+				embeds: [starterEmbed.setImage(gifURL)],
+				components: [
+					createPokemonGenerationSelectRow(selection),
+					createStarterPokemonButtonRow(),
+				],
 			});
-		if (!starterInteraction) return;
+			currentGeneration = selection;
+		});
 
-		let starter: string;
-		let starterId: string;
-		switch (starterInteraction.customId) {
-			case "2":
-				starter = "Charmander";
-				starterId = "4";
-				break;
-			case "3":
-				starter = "Squirtle";
-				starterId = "7";
-				break;
-			default:
-				starter = "Bulbasaur";
-				starterId = "1";
-				break;
-		}
-
-		await starterInteraction.showModal(
-			createNameModal(
-				"Name your Pokémon",
-				"pokemonNameModal",
-				"pokemonNameInput",
-				starter,
-			),
-		);
-
-		const pokemonNameInteraction =
-			await starterInteraction.awaitModalSubmit({
-				filter: (i) => i.customId === "pokemonNameModal",
-				time: 3_600_000,
-			});
-
-		let pokemonName =
-			pokemonNameInteraction.fields.getTextInputValue("pokemonNameInput");
-		if (!pokemonName) pokemonName = starter;
-
-		pokemonNameInteraction.deferUpdate();
-
-		try {
-			await this.container.db.insert(users).values({
-				id: pokemonNameInteraction.user.id,
-				name,
+		const starterCollector =
+			response.resource.message.createMessageComponentCollector({
+				componentType: ComponentType.Button,
+				filter: (i) => i.user.id === user.id,
+				time: 870_000,
 			});
 
-			await this.container.db.insert(pokemons).values({
-				name: pokemonName,
-				pokemonId: starterId,
-				userId: pokemonNameInteraction.user.id,
-			});
-		} catch (err) {
-			this.container.logger.error(err);
-			return await starterInteraction.editReply({
-				content: null,
-				embeds: [createErrorEmbed("Failed create user")],
+		starterCollector.on("collect", async (buttonInteraction) => {
+			const currentPokemons =
+				PokemonGenerationStarters[parseInt(currentGeneration) - 1];
+
+			const starter =
+				currentPokemons[parseInt(buttonInteraction.customId) - 1].name;
+			const starterId =
+				currentPokemons[parseInt(buttonInteraction.customId) - 1].id;
+
+			await buttonInteraction.showModal(
+				createNameModal("Name your Pokémon", "pokemon", starter),
+			);
+			const pokemonNameInteraction = await buttonInteraction
+				.awaitModalSubmit({
+					filter: (i) => i.customId === "pokemonNameModal",
+					time: 600_000,
+				})
+				.catch(async () => {
+					await buttonInteraction.followUp({
+						embeds: [
+							createErrorEmbed(
+								`"Think of a name faster next time! I don't have all day" said the professor`,
+							),
+						],
+						flags: ["Ephemeral"],
+					});
+				});
+			if (!pokemonNameInteraction) return;
+			pokemonNameInteraction.deferUpdate();
+
+			let pokemonName =
+				pokemonNameInteraction.fields.getTextInputValue(
+					"pokemonNameInput",
+				);
+			if (!pokemonName) pokemonName = starter;
+
+			try {
+				await this.container.db.insert(users).values({
+					id: user.id,
+					name,
+				});
+
+				await this.container.db.insert(pokemons).values({
+					name: pokemonName,
+					pokemonId: starterId.toString(),
+					userId: user.id,
+				});
+			} catch (err) {
+				this.container.logger.error(err);
+				return await nameInteraction
+					.editReply({
+						embeds: [createErrorEmbed("Failed to create user")],
+						components: [],
+					})
+					.catch(async () => {
+						await nameInteraction.followUp({
+							embeds: [createErrorEmbed("Failed to create user")],
+						});
+						await nameInteraction.deleteReply();
+					});
+			}
+
+			const success = new PokeblueEmbed()
+				.setTitle("Welcome to Pokéblue!")
+				.setDescription(
+					`You have selected ${pokemonName === starter ? pokemonName : `${pokemonName} (${starter})`} as your starter!\nYou can now start catching Pokémons!`,
+				);
+
+			await nameInteraction
+				.editReply({
+					embeds: [success],
+					components: [],
+				})
+				.catch(async () => {
+					await nameInteraction.followUp({
+						embeds: [success],
+					});
+					await nameInteraction.deleteReply();
+				});
+		});
+
+		starterCollector.on("end", async () => {
+			await nameInteraction.editReply({
+				embeds: [
+					createErrorEmbed("You were so slow the professor left"),
+				],
 				components: [],
 			});
-		}
-
-		const success = new PokeblueEmbed()
-			.setTitle("Welcome to Pokéblue!")
-			.setDescription(
-				`You have selected ${starter} as your starter!\nYou can now start catching Pokémons!`,
-			);
-
-		nameInteraction.editReply({
-			content: null,
-			embeds: [success],
-			components: [],
 		});
 	}
-}
-
-function createNameModal(
-	title: string,
-	id: string,
-	textId: string,
-	name: string,
-): ModalBuilder {
-	const nameModal = new ModalBuilder()
-		.setCustomId(id)
-		.setTitle("Welcome to Pokéblue!");
-
-	const nameTextInput = new TextInputBuilder()
-		.setCustomId(textId)
-		.setLabel(title)
-		.setMaxLength(28)
-		.setStyle(TextInputStyle.Short)
-		.setRequired(false)
-		.setPlaceholder(name);
-
-	const nameActionRow =
-		new ActionRowBuilder<TextInputBuilder>().addComponents(nameTextInput);
-
-	nameModal.addComponents(nameActionRow);
-
-	return nameModal;
-}
-
-function createStarterButtons(): ActionRowBuilder<ButtonBuilder> {
-	const emptyButton = new ButtonBuilder()
-		.setCustomId("empty-0")
-		.setLabel("-")
-		.setDisabled(true)
-		.setStyle(ButtonStyle.Secondary);
-	const emptyButton2 = new ButtonBuilder()
-		.setCustomId("empty-1")
-		.setLabel("-")
-		.setDisabled(true)
-		.setStyle(ButtonStyle.Secondary);
-
-	const bulbasaurButton = new ButtonBuilder()
-		.setCustomId("1")
-		.setLabel("1")
-		.setStyle(ButtonStyle.Success);
-	const charmanderButton = new ButtonBuilder()
-		.setCustomId("2")
-		.setLabel("2")
-		.setStyle(ButtonStyle.Danger);
-	const squirtleButton = new ButtonBuilder()
-		.setCustomId("3")
-		.setLabel("3")
-		.setStyle(ButtonStyle.Primary);
-
-	const starterButtons = new ActionRowBuilder<ButtonBuilder>().addComponents(
-		bulbasaurButton,
-		emptyButton,
-		charmanderButton,
-		emptyButton2,
-		squirtleButton,
-	);
-
-	return starterButtons;
 }

@@ -3,7 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { container } from "@sapphire/framework";
 import { streamToBuffer } from "#lib/stream";
-import { lcm } from "#lib/math";
+import { PokemonGenerationStarters } from "#lib/pokemon";
+import { getLowestTotalGIFFrames } from "#lib/math";
 import gifFrames, { type GifFrameReadableStream } from "gif-frames";
 import sharp from "sharp";
 
@@ -29,6 +30,14 @@ export async function decodeGIFFramesFromURL(
 
 	const tmpPath = join(tmpdir(), `${Bun.randomUUIDv7()}.gif`);
 	await Bun.write(tmpPath, responseBuffer);
+
+	const gifsicleColour = Bun.spawn({
+		cmd: ["gifsicle", "--batch", "--colors=255", tmpPath],
+		stdout: null,
+	});
+	if ((await gifsicleColour.exited) != 0) {
+		throw new Error(new TextDecoder().decode(gifsicleColour.stderr));
+	}
 
 	const gifsicle = Bun.spawn({
 		cmd: ["gifsicle", "--batch", "--unoptimize", tmpPath],
@@ -59,10 +68,10 @@ export async function createGIF(
 
 	const totalTime = Date.now();
 
-	const roundedToEvenFrames = gifs.map(
-		(gif) => 2 * Math.round(gif.frames.length / 2),
+	const totalFrames = getLowestTotalGIFFrames(
+		gifs.map((gif) => gif.frames.length),
+		FRAME_SKIP,
 	);
-	const totalFrames = Math.floor(lcm(roundedToEvenFrames) / FRAME_SKIP);
 
 	const currentFrames: number[] = Array(gifs.length).fill(0);
 
@@ -189,19 +198,23 @@ export function getPublicGIFURL(gif: string): string {
 	return new URL(`./images/${gif}`, new URL(process.env.S3_PUBLIC_URL!)).href;
 }
 
-export async function createStarterGIF(): Promise<string> {
-	if (await Bun.s3.exists("images/starters.gif")) {
-		return getPublicGIFURL("starters.gif");
+export async function createStarterGIF(generation: string): Promise<string> {
+	const starters = PokemonGenerationStarters[parseInt(generation) - 1];
+
+	const gifPath = `starters-${generation}.gif`;
+
+	if (await Bun.s3.exists(`images/${gifPath}`)) {
+		return getPublicGIFURL(gifPath);
 	}
 
-	const bulbasaurFrames = await decodeGIFFramesFromURL(
-		"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/1.gif",
+	const grassPokemonFrames = await decodeGIFFramesFromURL(
+		`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/${starters[0].id}.gif`,
 	);
-	const charmanderFrames = await decodeGIFFramesFromURL(
-		"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/4.gif",
+	const firePokemonFrames = await decodeGIFFramesFromURL(
+		`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/${starters[1].id}.gif`,
 	);
-	const squirtleFrames = await decodeGIFFramesFromURL(
-		"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/7.gif",
+	const waterPokemonFrames = await decodeGIFFramesFromURL(
+		`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/${starters[2].id}.gif`,
 	);
 
 	const gifBuffer = await createGIF(
@@ -209,7 +222,7 @@ export async function createStarterGIF(): Promise<string> {
 		500,
 		[
 			{
-				frames: bulbasaurFrames,
+				frames: grassPokemonFrames,
 				x: 250,
 				y: 450,
 				widthMultiplier: 4,
@@ -217,7 +230,7 @@ export async function createStarterGIF(): Promise<string> {
 				bottomCenterPivot: true,
 			},
 			{
-				frames: charmanderFrames,
+				frames: firePokemonFrames,
 				x: 500,
 				y: 450,
 				widthMultiplier: 4,
@@ -225,7 +238,7 @@ export async function createStarterGIF(): Promise<string> {
 				bottomCenterPivot: true,
 			},
 			{
-				frames: squirtleFrames,
+				frames: waterPokemonFrames,
 				x: 750,
 				y: 450,
 				widthMultiplier: 4,
@@ -236,7 +249,7 @@ export async function createStarterGIF(): Promise<string> {
 		"./src/assets/starterBackground.jpg",
 	);
 
-	await Bun.s3.write("images/starters.gif", gifBuffer);
+	await Bun.s3.write(`images/${gifPath}`, gifBuffer);
 
-	return getPublicGIFURL("starters.gif");
+	return getPublicGIFURL(gifPath);
 }
