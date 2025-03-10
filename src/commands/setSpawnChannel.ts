@@ -4,7 +4,7 @@ import { Command } from "@sapphire/framework";
 import { guilds } from "#db/schema";
 import { eq } from "drizzle-orm";
 
-export class PingCommand extends Command {
+export class SetSpawnCommand extends Command {
 	public constructor(
 		context: Command.LoaderContext,
 		options: Command.Options,
