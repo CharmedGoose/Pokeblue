@@ -11,5 +11,5 @@ export function createErrorEmbed(message: string): EmbedBuilder {
 	return new PokeblueEmbed()
 		.setColor("Red")
 		.setTitle("ERROR")
-		.setDescription(message)
+		.setDescription(message);
 }

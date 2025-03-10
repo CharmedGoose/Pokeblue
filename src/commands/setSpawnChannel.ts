@@ -1,4 +1,4 @@
-import { createErrorEmbed, PokeblueEmbed } from "#lib/embed";
+import { createErrorEmbed, PokeblueEmbed } from "#lib/utils/embed";
 import { ChannelType } from "discord.js";
 import { Command } from "@sapphire/framework";
 import { guilds } from "#db/schema";

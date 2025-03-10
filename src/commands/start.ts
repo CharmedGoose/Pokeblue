@@ -4,12 +4,12 @@ import { ComponentType } from "discord.js";
 import {
 	createPokemonGenerationSelectRow,
 	createStarterPokemonButtonRow,
-} from "#lib/actionRow";
-import { createStarterGIF, getPublicGIFURL } from "#lib/gif";
-import { PokeblueEmbed, createErrorEmbed } from "#lib/embed";
+} from "#lib/utils/actionRow";
+import { createStarterGIF, getPublicGIFURL } from "#lib/utils/gif";
+import { PokeblueEmbed, createErrorEmbed } from "#lib/utils/embed";
 import { PokemonGenerationStarters } from "#lib/pokemon";
+import { createNameModal } from "#lib/utils/modal";
 import { pokemons, users } from "#db/schema";
-import { createNameModal } from "#lib/modal";
 
 export class StartCommand extends Command {
 	public constructor(

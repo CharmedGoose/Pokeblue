@@ -2,9 +2,9 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { container } from "@sapphire/framework";
-import { streamToBuffer } from "#lib/stream";
+import { streamToBuffer } from "#lib/utils/stream";
 import { PokemonGenerationStarters } from "#lib/pokemon";
-import { getLowestTotalGIFFrames } from "#lib/math";
+import { getLowestTotalGIFFrames } from "#lib/utils/math";
 import gifFrames, { type GifFrameReadableStream } from "gif-frames";
 import sharp from "sharp";
 
