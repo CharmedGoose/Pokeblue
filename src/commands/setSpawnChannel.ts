@@ -9,6 +9,7 @@ import {
 	DEFAULT_MIN_SPAWN_TIME,
 	DEFAULT_MAX_SPAWN_TIME,
 } from "#config";
+import * as Sentry from "@sentry/bun";
 
 const MIN_MAX_SPAWN_TIME = MIN_SPAWN_TIME + MIN_TIME_BETWEEN_SPAWNS;
 
@@ -120,6 +121,7 @@ export class SetSpawnCommand extends Command {
 				});
 			}
 		} catch (err) {
+			Sentry.captureException(err);
 			this.container.logger.error(err);
 			return interaction.reply({
 				embeds: [createErrorEmbed("Failed to set spawn channel")],

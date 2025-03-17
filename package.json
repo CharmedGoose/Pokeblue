@@ -4,7 +4,7 @@
 	"module": "src/index.ts",
 	"type": "module",
 	"scripts": {
-		"dev": "bun --watch run ./src/index.ts",
+		"dev": "NODE_ENV=development bun --watch run ./src/index.ts",
 		"prepare": "husky",
 		"drizzle:generate": "drizzle-kit generate --config=drizzle.config.ts",
 		"drizzle:migrate": "drizzle-kit migrate --config=drizzle.config.ts",
@@ -27,6 +27,7 @@
 	"dependencies": {
 		"@sapphire/framework": "^5.3.2",
 		"@sapphire/plugin-logger": "^4.0.2",
+		"@sentry/bun": "^9.5.0",
 		"bufferutil": "^4.0.9",
 		"discord.js": "^14.18.0",
 		"drizzle-orm": "^0.40.0",

@@ -10,6 +10,7 @@ import { PokeblueEmbed, createErrorEmbed } from "#lib/utils/embed";
 import { PokemonGenerationStarters } from "#lib/pokemon";
 import { createNameModal } from "#lib/utils/modal";
 import { pokemons, users } from "#db/schema";
+import * as Sentry from "@sentry/bun";
 
 export class StartCommand extends Command {
 	public constructor(
@@ -87,6 +88,7 @@ export class StartCommand extends Command {
 		}
 
 		const gifURL = await createStarterGIF("1").catch(async (err) => {
+			Sentry.captureException(err);
 			this.container.logger.error(err);
 			await nameInteraction.editReply({
 				embeds: [createErrorEmbed("Failed to get starters")],
@@ -134,6 +136,7 @@ export class StartCommand extends Command {
 
 				gifURL = await createStarterGIF(selection).catch(
 					async (err) => {
+						Sentry.captureException(err);
 						this.container.logger.error(err);
 						await selectInteraction.editReply({
 							embeds: [starterEmbed],
@@ -220,6 +223,7 @@ export class StartCommand extends Command {
 					userId: user.id,
 				});
 			} catch (err) {
+				Sentry.captureException(err);
 				this.container.logger.error(err);
 				return await nameInteraction
 					.editReply({

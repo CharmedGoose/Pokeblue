@@ -1,4 +1,5 @@
 import { createErrorEmbed } from "#lib/utils/embed";
+import * as Sentry from "@sentry/bun";
 import {
 	Events,
 	Listener,
@@ -8,7 +9,9 @@ import {
 export class ChatInputCommandError extends Listener<
 	typeof Events.ChatInputCommandError
 > {
-	public run(_error: unknown, { interaction }: ChatInputCommandErrorPayload) {
+	public run(error: unknown, { interaction }: ChatInputCommandErrorPayload) {
+		Sentry.captureException(error);
+
 		if (interaction.deferred || interaction.replied) {
 			return interaction.editReply({
 				embeds: [createErrorEmbed("Something went wrong")],
