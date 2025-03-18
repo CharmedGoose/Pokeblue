@@ -11,6 +11,7 @@ export class ChatInputCommandError extends Listener<
 > {
 	public run(error: unknown, { interaction }: ChatInputCommandErrorPayload) {
 		Sentry.captureException(error);
+		this.container.logger.error(error);
 
 		if (interaction.deferred || interaction.replied) {
 			return interaction.editReply({
