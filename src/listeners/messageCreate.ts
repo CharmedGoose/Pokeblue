@@ -4,9 +4,7 @@ import { Message } from "discord.js";
 import { guilds } from "#db/schema";
 import { eq } from "drizzle-orm";
 
-export class MessageCreateListener extends Listener<
-	typeof Events.MessageCreate
-> {
+export class MessageCreateListener extends Listener<typeof Events.MessageCreate> {
 	public async run(message: Message) {
 		if (message.author.bot || !message.guild) return;
 
@@ -26,10 +24,7 @@ export class MessageCreateListener extends Listener<
 			.where(eq(guilds.id, message.guild.id));
 
 		if (messagesSinceLastSpawn >= guild.minSpawnMessages) {
-			if (
-				randomNumber(0, 100) === 0 ||
-				messagesSinceLastSpawn >= guild.maxSpawnMessages
-			) {
+			if (randomNumber(0, 100) === 0 || messagesSinceLastSpawn >= guild.maxSpawnMessages) {
 				await this.container.db
 					.update(guilds)
 					.set({
@@ -37,9 +32,7 @@ export class MessageCreateListener extends Listener<
 					})
 					.where(eq(guilds.id, message.guild.id));
 
-				const channel = message.guild.channels.cache.get(
-					guild.spawnChannel,
-				);
+				const channel = message.guild.channels.cache.get(guild.spawnChannel);
 				if (!channel || !channel.isTextBased()) return;
 
 				await channel.send("A wild pokémon has appeared!");

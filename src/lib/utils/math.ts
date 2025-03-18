@@ -20,9 +20,7 @@ export function randomNumber(min: number, max: number): number {
 export function getLowestTotalGIFFrames(gifLengths: number[]): number {
 	const roundedFrames = [];
 	for (let i = 1; i < 11; i++) {
-		roundedFrames.push(
-			gifLengths.map((length) => Math.round(length / i) * i),
-		);
+		roundedFrames.push(gifLengths.map((length) => Math.round(length / i) * i));
 	}
 
 	const totalFrames = [];

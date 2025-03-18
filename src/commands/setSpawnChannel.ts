@@ -3,19 +3,11 @@ import { ChannelType } from "discord.js";
 import { Command } from "@sapphire/framework";
 import { guilds } from "#db/schema";
 import { eq } from "drizzle-orm";
-import {
-	MIN_SPAWN_MESSAGES,
-	MIN_MAX_MESSAGES,
-	DEFAULT_MIN_SPAWN_MESSAGES,
-	DEFAULT_MAX_SPAWN_MESSAGES,
-} from "#config";
+import { MIN_SPAWN_MESSAGES, MIN_MAX_MESSAGES, DEFAULT_MIN_SPAWN_MESSAGES, DEFAULT_MAX_SPAWN_MESSAGES } from "#config";
 import * as Sentry from "@sentry/bun";
 
 export class SetSpawnCommand extends Command {
-	public constructor(
-		context: Command.LoaderContext,
-		options: Command.Options,
-	) {
+	public constructor(context: Command.LoaderContext, options: Command.Options) {
 		super(context, {
 			...options,
 			requiredClientPermissions: ["SendMessages"],
@@ -57,9 +49,7 @@ export class SetSpawnCommand extends Command {
 		);
 	}
 
-	public override async chatInputRun(
-		interaction: Command.ChatInputCommandInteraction,
-	) {
+	public override async chatInputRun(interaction: Command.ChatInputCommandInteraction) {
 		const guild = interaction.guild;
 		const channelOption = interaction.options.getChannel("channel");
 		if (!channelOption || !guild) return;
@@ -72,12 +62,8 @@ export class SetSpawnCommand extends Command {
 			});
 		}
 
-		const minMessages =
-			interaction.options.getInteger("minmessages") ||
-			DEFAULT_MIN_SPAWN_MESSAGES;
-		const maxMessages =
-			interaction.options.getInteger("maxmessages") ||
-			DEFAULT_MAX_SPAWN_MESSAGES;
+		const minMessages = interaction.options.getInteger("minmessages") || DEFAULT_MIN_SPAWN_MESSAGES;
+		const maxMessages = interaction.options.getInteger("maxmessages") || DEFAULT_MAX_SPAWN_MESSAGES;
 
 		if (maxMessages < minMessages + MIN_MAX_MESSAGES) {
 			return interaction.reply({
@@ -92,11 +78,7 @@ export class SetSpawnCommand extends Command {
 
 		if (!channel.permissionsFor(guild.members.me!)?.has("SendMessages")) {
 			return interaction.reply({
-				embeds: [
-					createErrorEmbed(
-						`Pokéblue needs the \`Send Messages\` permission in <#${channelOption.id}>`,
-					),
-				],
+				embeds: [createErrorEmbed(`Pokéblue needs the \`Send Messages\` permission in <#${channelOption.id}>`)],
 				flags: ["Ephemeral"],
 			});
 		}

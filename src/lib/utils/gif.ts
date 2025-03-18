@@ -20,9 +20,7 @@ export interface GIFs {
 	bottomCenterPivot?: boolean;
 }
 
-export async function decodeGIFFramesFromURL(
-	url: string,
-): Promise<GifFrameReadableStream[]> {
+export async function decodeGIFFramesFromURL(url: string): Promise<GifFrameReadableStream[]> {
 	const response = await fetch(url);
 	const responseBuffer = Buffer.from(await response.arrayBuffer());
 
@@ -66,9 +64,7 @@ export async function createGIF(
 
 	const totalTime = Date.now();
 
-	const totalFrames = getLowestTotalGIFFrames(
-		gifs.map((gif) => gif.frames.length),
-	);
+	const totalFrames = getLowestTotalGIFFrames(gifs.map((gif) => gif.frames.length));
 
 	const currentFrames: number[] = Array(gifs.length).fill(0);
 
@@ -111,9 +107,7 @@ export async function createGIF(
 		}
 
 		const paddedFrame = frame.toString().padStart(4, "0");
-		await currentImage
-			.composite(await Promise.all(imagesToDraw))
-			.toFile(join(tmpPath, `${paddedFrame}.gif`));
+		await currentImage.composite(await Promise.all(imagesToDraw)).toFile(join(tmpPath, `${paddedFrame}.gif`));
 	}
 
 	if (process.env.DEBUG) {
@@ -157,10 +151,7 @@ export async function createGIF(
 	return output;
 }
 
-async function drawFrame(
-	frame: GifFrameReadableStream,
-	gif: GIFs,
-): Promise<sharp.OverlayOptions> {
+async function drawFrame(frame: GifFrameReadableStream, gif: GIFs): Promise<sharp.OverlayOptions> {
 	const GIFWidth = gif.width
 		? gif.width
 		: gif.widthMultiplier
@@ -183,9 +174,7 @@ async function drawFrame(
 	}
 
 	return {
-		input: await sharp(image)
-			.resize(GIFWidth, GIFHeight, { fit: "inside", kernel: "nearest" })
-			.toBuffer(),
+		input: await sharp(image).resize(GIFWidth, GIFHeight, { fit: "inside", kernel: "nearest" }).toBuffer(),
 		left: gif.x - (gif.bottomCenterPivot ? GIFWidth / 2 : 0),
 		top: gif.y - (gif.bottomCenterPivot ? GIFHeight : 0),
 	};

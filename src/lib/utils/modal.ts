@@ -1,15 +1,6 @@
-import {
-	ActionRowBuilder,
-	ModalBuilder,
-	TextInputBuilder,
-	TextInputStyle,
-} from "discord.js";
+import { ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } from "discord.js";
 
-export function createNameModal(
-	title: string,
-	type: "player" | "pokemon",
-	name: string,
-): ModalBuilder {
+export function createNameModal(title: string, type: "player" | "pokemon", name: string): ModalBuilder {
 	const isPlayer = type === "player";
 
 	const nameModal = new ModalBuilder()
@@ -24,8 +15,7 @@ export function createNameModal(
 		.setRequired(false)
 		.setPlaceholder(name);
 
-	const nameActionRow =
-		new ActionRowBuilder<TextInputBuilder>().addComponents(nameTextInput);
+	const nameActionRow = new ActionRowBuilder<TextInputBuilder>().addComponents(nameTextInput);
 
 	nameModal.addComponents(nameActionRow);
 

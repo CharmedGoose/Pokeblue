@@ -1,38 +1,20 @@
 import { createErrorEmbed } from "#lib/utils/embed";
-import {
-	Events,
-	Listener,
-	type ChatInputCommandDeniedPayload,
-	type UserError,
-} from "@sapphire/framework";
+import { Events, Listener, type ChatInputCommandDeniedPayload, type UserError } from "@sapphire/framework";
 
-export class ChatInputCommandDenied extends Listener<
-	typeof Events.ChatInputCommandDenied
-> {
-	public run(
-		error: UserError,
-		{ interaction }: ChatInputCommandDeniedPayload,
-	) {
+export class ChatInputCommandDenied extends Listener<typeof Events.ChatInputCommandDenied> {
+	public run(error: UserError, { interaction }: ChatInputCommandDeniedPayload) {
 		if (error.identifier === "preconditionClientPermissions") {
 			const context = error.context as { missing: string[] };
 
 			return interaction.reply({
-				embeds: [
-					createErrorEmbed(
-						`Pokéblue needs: \`${context.missing.join("`, `")}\` to run this command.`,
-					),
-				],
+				embeds: [createErrorEmbed(`Pokéblue needs: \`${context.missing.join("`, `")}\` to run this command.`)],
 			});
 		}
 		if (error.identifier === "preconditionUserPermissions") {
 			const context = error.context as { missing: string[] };
 
 			return interaction.reply({
-				embeds: [
-					createErrorEmbed(
-						`You need: \`${context.missing.join("`, `")}\` to run this command.`,
-					),
-				],
+				embeds: [createErrorEmbed(`You need: \`${context.missing.join("`, `")}\` to run this command.`)],
 			});
 		}
 

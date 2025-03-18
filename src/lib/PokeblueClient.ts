@@ -1,9 +1,4 @@
-import {
-	ApplicationCommandRegistries,
-	container,
-	LogLevel,
-	SapphireClient,
-} from "@sapphire/framework";
+import { ApplicationCommandRegistries, container, LogLevel, SapphireClient } from "@sapphire/framework";
 import { ActivityType, GatewayIntentBits } from "discord.js";
 import { drizzle, BunSQLDatabase } from "drizzle-orm/bun-sql";
 import { $, SQL } from "bun";
@@ -13,18 +8,13 @@ import Pokedex from "pokedex-promise-v2";
 export class PokeblueClient extends SapphireClient {
 	public constructor() {
 		super({
-			intents: [
-				GatewayIntentBits.Guilds,
-				GatewayIntentBits.GuildMessages,
-			],
+			intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
 			presence: {
 				activities: [
 					{
-						name:
-							process.env.DISCORD_PRESENCE_NAME || "with Pokémon",
+						name: process.env.DISCORD_PRESENCE_NAME || "with Pokémon",
 						type: ActivityType[
-							(process.env.DISCORD_PRESENCE_TYPE ||
-								"Playing") as keyof typeof ActivityType
+							(process.env.DISCORD_PRESENCE_TYPE || "Playing") as keyof typeof ActivityType
 						],
 					},
 				],
@@ -37,9 +27,7 @@ export class PokeblueClient extends SapphireClient {
 
 	public override async login(token?: string) {
 		if (process.env.DISCORD_GUILD_ID) {
-			ApplicationCommandRegistries.setDefaultGuildIds([
-				process.env.DISCORD_GUILD_ID,
-			]);
+			ApplicationCommandRegistries.setDefaultGuildIds([process.env.DISCORD_GUILD_ID]);
 		}
 
 		const client = new SQL(process.env.DATABASE_URL!);

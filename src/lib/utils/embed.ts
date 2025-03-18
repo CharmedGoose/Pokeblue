@@ -8,8 +8,5 @@ export class PokeblueEmbed extends EmbedBuilder {
 }
 
 export function createErrorEmbed(message: string): EmbedBuilder {
-	return new PokeblueEmbed()
-		.setColor("Red")
-		.setTitle("ERROR")
-		.setDescription(message);
+	return new PokeblueEmbed().setColor("Red").setTitle("ERROR").setDescription(message);
 }
