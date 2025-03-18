@@ -1,7 +1,13 @@
-import { ApplicationCommandRegistries, container, LogLevel, SapphireClient } from "@sapphire/framework";
+import {
+	ApplicationCommandRegistries,
+	container,
+	LogLevel,
+	SapphireClient,
+} from "@sapphire/framework";
 import { ActivityType, GatewayIntentBits } from "discord.js";
-import { drizzle, NodePgDatabase } from "drizzle-orm/node-postgres";
-import { $ } from "bun";
+import { drizzle, BunSQLDatabase } from "drizzle-orm/bun-sql";
+import { $, SQL } from "bun";
+import * as schema from "#db/schema";
 import Pokedex from "pokedex-promise-v2";
 
 export class PokeblueClient extends SapphireClient {
@@ -36,7 +42,8 @@ export class PokeblueClient extends SapphireClient {
 			]);
 		}
 
-		container.db = drizzle(process.env.DATABASE_URL!);
+		const client = new SQL(process.env.DATABASE_URL!);
+		container.db = drizzle({ client, schema });
 
 		container.pokedex = new Pokedex();
 
@@ -50,7 +57,9 @@ export class PokeblueClient extends SapphireClient {
 
 declare module "@sapphire/pieces" {
 	interface Container {
-		db: NodePgDatabase;
+		db: BunSQLDatabase<typeof schema> & {
+			$client: SQL;
+		};
 		pokedex: Pokedex;
 		embedFooter: string;
 	}

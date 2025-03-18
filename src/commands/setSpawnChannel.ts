@@ -4,14 +4,12 @@ import { Command } from "@sapphire/framework";
 import { guilds } from "#db/schema";
 import { eq } from "drizzle-orm";
 import {
-	MIN_SPAWN_TIME,
-	MIN_TIME_BETWEEN_SPAWNS,
-	DEFAULT_MIN_SPAWN_TIME,
-	DEFAULT_MAX_SPAWN_TIME,
+	MIN_SPAWN_MESSAGES,
+	MIN_MAX_MESSAGES,
+	DEFAULT_MIN_SPAWN_MESSAGES,
+	DEFAULT_MAX_SPAWN_MESSAGES,
 } from "#config";
 import * as Sentry from "@sentry/bun";
-
-const MIN_MAX_SPAWN_TIME = MIN_SPAWN_TIME + MIN_TIME_BETWEEN_SPAWNS;
 
 export class SetSpawnCommand extends Command {
 	public constructor(
@@ -42,19 +40,19 @@ export class SetSpawnCommand extends Command {
 				)
 				.addIntegerOption((option) =>
 					option
-						.setName("mintime")
+						.setName("minmessages")
 						.setDescription(
-							`The minimum time between Pokémon spawns in seconds (min ${MIN_SPAWN_TIME}). Default is ${DEFAULT_MIN_SPAWN_TIME}`,
+							`The minimum messages between Pokémon spawns (min. ${MIN_SPAWN_MESSAGES}). Default: ${DEFAULT_MIN_SPAWN_MESSAGES}`,
 						)
-						.setMinValue(MIN_SPAWN_TIME),
+						.setMinValue(MIN_SPAWN_MESSAGES),
 				)
 				.addIntegerOption((option) =>
 					option
-						.setName("maxtime")
+						.setName("maxmessages")
 						.setDescription(
-							`The maximum time between Pokémon spawns in seconds (min ${MIN_MAX_SPAWN_TIME}). Default is ${DEFAULT_MAX_SPAWN_TIME}`,
+							`The maximum messages between Pokémon spawns (min. ${MIN_MAX_MESSAGES} more than the min. messages). Default: ${DEFAULT_MAX_SPAWN_MESSAGES}`,
 						)
-						.setMinValue(MIN_MAX_SPAWN_TIME),
+						.setMinValue(MIN_SPAWN_MESSAGES + MIN_MAX_MESSAGES),
 				),
 		);
 	}
@@ -74,15 +72,18 @@ export class SetSpawnCommand extends Command {
 			});
 		}
 
-		const minTime =
-			interaction.options.getInteger("mintime") || DEFAULT_MIN_SPAWN_TIME;
-		const maxTime =
-			interaction.options.getInteger("maxtime") || DEFAULT_MAX_SPAWN_TIME;
-		if (minTime > maxTime + MIN_TIME_BETWEEN_SPAWNS) {
+		const minMessages =
+			interaction.options.getInteger("minmessages") ||
+			DEFAULT_MIN_SPAWN_MESSAGES;
+		const maxMessages =
+			interaction.options.getInteger("maxmessages") ||
+			DEFAULT_MAX_SPAWN_MESSAGES;
+
+		if (maxMessages < minMessages + MIN_MAX_MESSAGES) {
 			return interaction.reply({
 				embeds: [
 					createErrorEmbed(
-						`The minimum time between Pokémon spawns must be less than the maximum time by ${MIN_TIME_BETWEEN_SPAWNS} seconds`,
+						`The maximum messages must be at least ${MIN_MAX_MESSAGES} more than the minimun messages`,
 					),
 				],
 				flags: ["Ephemeral"],
@@ -101,31 +102,34 @@ export class SetSpawnCommand extends Command {
 		}
 
 		try {
-			const dbGuild = await this.container.db
-				.select()
-				.from(guilds)
-				.where(eq(guilds.id, guild.id));
+			const dbGuild = await this.container.db.query.guilds.findFirst({
+				where: eq(guilds.id, guild.id),
+			});
 
-			if (dbGuild.length > 0) {
-				await this.container.db.update(guilds).set({
-					spawnChannel: channel.id,
-					minSpawnTime: minTime.toString(),
-					maxSpawnTime: maxTime.toString(),
-				});
-			} else {
+			if (!dbGuild) {
 				await this.container.db.insert(guilds).values({
 					id: guild.id,
 					spawnChannel: channel.id,
-					minSpawnTime: minTime.toString(),
-					maxSpawnTime: maxTime.toString(),
+					minSpawnMessages: minMessages,
+					maxSpawnMessages: maxMessages,
+					messagesSinceLastSpawn: 0,
 				});
+			} else {
+				await this.container.db
+					.update(guilds)
+					.set({
+						spawnChannel: channel.id,
+						minSpawnMessages: minMessages,
+						maxSpawnMessages: maxMessages,
+					})
+					.where(eq(guilds.id, guild.id));
 			}
 		} catch (err) {
 			Sentry.captureException(err);
 			this.container.logger.error(err);
 			return interaction.reply({
 				embeds: [createErrorEmbed("Failed to set spawn channel")],
-				ephemeral: true,
+				flags: ["Ephemeral"],
 			});
 		}
 
@@ -134,7 +138,7 @@ export class SetSpawnCommand extends Command {
 				new PokeblueEmbed()
 					.setTitle("Success")
 					.setDescription(
-						`Pokémon spawn channel set to <#${channel.id}> with a minimum spawn time of ${minTime} seconds and a maximum spawn time of ${maxTime} seconds`,
+						`Pokémon spawn channel set to <#${channel.id}> with \`${minMessages}\` minimum messages and \`${maxMessages}\` maximum messages for a Pokémon spawn.`,
 					),
 			],
 		});
