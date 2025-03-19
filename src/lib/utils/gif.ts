@@ -2,10 +2,11 @@ import { container } from "@sapphire/framework";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { GIF_DELAY, GIF_FRAME_SKIP } from "#config";
 import { PokemonGenerationStarters } from "#lib/pokemon";
 import { getLowestTotalGIFFrames } from "#lib/utils/math";
 import { streamToBuffer } from "#lib/utils/stream";
-import { GIF_DELAY, GIF_FRAME_SKIP } from "#config";
+import { s3 } from "bun";
 import gifFrames, { type GifFrameReadableStream } from "gif-frames";
 import sharp from "sharp";
 
@@ -27,21 +28,15 @@ export async function decodeGIFFramesFromURL(url: string): Promise<GifFrameReada
 	const tmpPath = join(tmpdir(), `${Bun.randomUUIDv7()}.gif`);
 	await Bun.write(tmpPath, responseBuffer);
 
-	const gifsicleColour = Bun.spawn({
+	Bun.spawn({
 		cmd: ["gifsicle", "--batch", "--colors=255", tmpPath],
 		stdout: null,
 	});
-	if ((await gifsicleColour.exited) != 0) {
-		throw new Error(new TextDecoder().decode(gifsicleColour.stderr));
-	}
 
-	const gifsicle = Bun.spawn({
+	Bun.spawn({
 		cmd: ["gifsicle", "--batch", "--unoptimize", tmpPath],
 		stdout: null,
 	});
-	if ((await gifsicle.exited) != 0) {
-		throw new Error(new TextDecoder().decode(gifsicle.stderr));
-	}
 
 	const gif = await gifFrames({
 		url: Buffer.from(await Bun.file(tmpPath).arrayBuffer()),
@@ -121,7 +116,7 @@ export async function createGIF(
 
 	const outputGIFPath = join(tmpPath, "output.gif");
 
-	const gif = Bun.spawn({
+	Bun.spawn({
 		cmd: [
 			"gifsicle",
 			`--delay=${GIF_DELAY}`,
@@ -137,9 +132,6 @@ export async function createGIF(
 		],
 		stdout: null,
 	});
-	if ((await gif.exited) != 0) {
-		throw new Error(new TextDecoder().decode(gif.stderr));
-	}
 
 	container.logger.debug(`GIF encoded in ${Date.now() - time}ms`);
 
@@ -180,8 +172,8 @@ async function drawFrame(frame: GifFrameReadableStream, gif: GIFs): Promise<shar
 	};
 }
 
-export function getPublicGIFURL(gif: string): string {
-	return new URL(`./images/${gif}`, new URL(process.env.S3_PUBLIC_URL!)).href;
+export function getPublicGIFURL(gifPath: string): string {
+	return new URL(`./images/${gifPath}`, new URL(process.env.S3_PUBLIC_URL!)).href;
 }
 
 export async function createStarterGIF(generation: string): Promise<string> {
@@ -189,7 +181,7 @@ export async function createStarterGIF(generation: string): Promise<string> {
 
 	const gifPath = `starters-${generation}.gif`;
 
-	if (await Bun.s3.exists(`images/${gifPath}`)) {
+	if (await s3.exists(`images/${gifPath}`)) {
 		return getPublicGIFURL(gifPath);
 	}
 
@@ -235,7 +227,7 @@ export async function createStarterGIF(generation: string): Promise<string> {
 		"./src/assets/starterBackground.jpg",
 	);
 
-	await Bun.s3.write(`images/${gifPath}`, gifBuffer);
+	await s3.write(`images/${gifPath}`, gifBuffer);
 
 	return getPublicGIFURL(gifPath);
 }

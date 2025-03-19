@@ -1,5 +1,5 @@
-import { createErrorEmbed } from "#lib/utils/embed";
 import { Events, Listener, type ChatInputCommandDeniedPayload, type UserError } from "@sapphire/framework";
+import { createErrorEmbed } from "#lib/utils/embed";
 
 export class ChatInputCommandDenied extends Listener<typeof Events.ChatInputCommandDenied> {
 	public run(error: UserError, { interaction }: ChatInputCommandDeniedPayload) {

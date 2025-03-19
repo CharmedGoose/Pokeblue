@@ -1,11 +1,11 @@
 import { Command } from "@sapphire/framework";
-import { eq } from "drizzle-orm";
 import { ComponentType } from "discord.js";
 import { createPokemonGenerationSelectRow, createStarterPokemonButtonRow } from "#lib/utils/actionRow";
 import { createStarterGIF, getPublicGIFURL } from "#lib/utils/gif";
 import { PokeblueEmbed, createErrorEmbed } from "#lib/utils/embed";
 import { PokemonGenerationStarters } from "#lib/pokemon";
 import { createNameModal } from "#lib/utils/modal";
+import { getUserFromId } from "#lib/utils/db";
 import { pokemons, users } from "#db/schema";
 import * as Sentry from "@sentry/bun";
 
@@ -25,15 +25,15 @@ export class StartCommand extends Command {
 	}
 
 	public override async chatInputRun(interaction: Command.ChatInputCommandInteraction) {
-		const dbUser = await this.container.db.select().from(users).where(eq(users.id, interaction.user.id));
-		if (dbUser.length > 0) {
+		const user = interaction.user;
+
+		const dbUser = await getUserFromId(user.id);
+		if (dbUser) {
 			return await interaction.reply({
 				embeds: [createErrorEmbed(`"What are you doing here? You already have a pokemon!" said the professor`)],
 				flags: ["Ephemeral"],
 			});
 		}
-
-		const user = interaction.user;
 
 		await interaction.showModal(createNameModal("What's your name?", "player", user.displayName));
 		const nameInteraction = await interaction

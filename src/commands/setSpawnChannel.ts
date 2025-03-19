@@ -1,9 +1,10 @@
-import { createErrorEmbed, PokeblueEmbed } from "#lib/utils/embed";
-import { ChannelType } from "discord.js";
 import { Command } from "@sapphire/framework";
-import { guilds } from "#db/schema";
+import { ChannelType } from "discord.js";
 import { eq } from "drizzle-orm";
 import { MIN_SPAWN_MESSAGES, MIN_MAX_MESSAGES, DEFAULT_MIN_SPAWN_MESSAGES, DEFAULT_MAX_SPAWN_MESSAGES } from "#config";
+import { createErrorEmbed, PokeblueEmbed } from "#lib/utils/embed";
+import { getGuildFromId } from "#lib/utils/db";
+import { guilds } from "#db/schema";
 import * as Sentry from "@sentry/bun";
 
 export class SetSpawnCommand extends Command {
@@ -32,7 +33,7 @@ export class SetSpawnCommand extends Command {
 				)
 				.addIntegerOption((option) =>
 					option
-						.setName("minmessages")
+						.setName("min-messages")
 						.setDescription(
 							`The minimum messages between Pokémon spawns (min. ${MIN_SPAWN_MESSAGES}). Default: ${DEFAULT_MIN_SPAWN_MESSAGES}`,
 						)
@@ -40,7 +41,7 @@ export class SetSpawnCommand extends Command {
 				)
 				.addIntegerOption((option) =>
 					option
-						.setName("maxmessages")
+						.setName("max-messages")
 						.setDescription(
 							`The maximum messages between Pokémon spawns (min. ${MIN_MAX_MESSAGES} more than the min. messages). Default: ${DEFAULT_MAX_SPAWN_MESSAGES}`,
 						)
@@ -62,8 +63,14 @@ export class SetSpawnCommand extends Command {
 			});
 		}
 
-		const minMessages = interaction.options.getInteger("minmessages") || DEFAULT_MIN_SPAWN_MESSAGES;
-		const maxMessages = interaction.options.getInteger("maxmessages") || DEFAULT_MAX_SPAWN_MESSAGES;
+		const dbGuild = await getGuildFromId(guild.id);
+
+		const minMessages =
+			interaction.options.getInteger("min-messages") ||
+			(dbGuild ? dbGuild.minSpawnMessages : DEFAULT_MIN_SPAWN_MESSAGES);
+		const maxMessages =
+			interaction.options.getInteger("max-messages") ||
+			(dbGuild ? dbGuild.maxSpawnMessages : DEFAULT_MAX_SPAWN_MESSAGES);
 
 		if (maxMessages < minMessages + MIN_MAX_MESSAGES) {
 			return interaction.reply({
@@ -84,10 +91,6 @@ export class SetSpawnCommand extends Command {
 		}
 
 		try {
-			const dbGuild = await this.container.db.query.guilds.findFirst({
-				where: eq(guilds.id, guild.id),
-			});
-
 			if (!dbGuild) {
 				await this.container.db.insert(guilds).values({
 					id: guild.id,
@@ -120,7 +123,7 @@ export class SetSpawnCommand extends Command {
 				new PokeblueEmbed()
 					.setTitle("Success")
 					.setDescription(
-						`Pokémon spawn channel set to <#${channel.id}> with \`${minMessages}\` minimum messages and \`${maxMessages}\` maximum messages for a Pokémon spawn.`,
+						`Pokémon spawn channel set to <#${channel.id}> with \`${minMessages}\` minimum messages and \`${maxMessages}\` maximum messages for a Pokémon to spawn.`,
 					),
 			],
 		});

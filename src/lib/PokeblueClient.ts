@@ -1,6 +1,6 @@
 import { ApplicationCommandRegistries, container, LogLevel, SapphireClient } from "@sapphire/framework";
-import { ActivityType, GatewayIntentBits } from "discord.js";
 import { drizzle, BunSQLDatabase } from "drizzle-orm/bun-sql";
+import { ActivityType, GatewayIntentBits } from "discord.js";
 import { $, SQL } from "bun";
 import * as schema from "#db/schema";
 import Pokedex from "pokedex-promise-v2";
