@@ -30,7 +30,7 @@
 		"@sentry/bun": "^9.5.0",
 		"bufferutil": "^4.0.9",
 		"discord.js": "^14.18.0",
-		"drizzle-orm": "^0.40.0",
+		"drizzle-orm": "^0.41.0",
 		"gif-frames": "github:benwiley4000/gif-frames",
 		"pokedex-promise-v2": "^4.2.1",
 		"sharp": "^0.33.5"
