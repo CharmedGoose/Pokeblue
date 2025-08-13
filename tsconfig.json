@@ -27,6 +27,7 @@
     "noPropertyAccessFromIndexSignature": false,
 
 	"paths": {
+		"#db/*": ["./src/db/*.ts"],
 		"#lib/*": ["./src/lib/*.ts"]
 	}
   }

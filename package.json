@@ -1,14 +1,19 @@
 {
 	"name": "pokeblue",
+	"main": "src/index.ts",
 	"module": "src/index.ts",
 	"type": "module",
 	"private": true,
 	"scripts": {
-		"dev": "bun --watch run ./src/index.ts"
+		"dev": "bun --watch run ./src/index.ts",
+		"drizzle:generate": "drizzle-kit generate --config=drizzle.config.ts",
+		"drizzle:migrate": "drizzle-kit migrate --config=drizzle.config.ts",
+		"drizzle:push": "drizzle-kit push --config=drizzle.config.ts"
 	},
 	"devDependencies": {
 		"@eslint/js": "^9.33.0",
-		"@types/bun": "latest",
+		"@types/bun": "^1.2.20",
+		"drizzle-kit": "^0.30.5",
 		"eslint": "^9.33.0",
 		"eslint-config-prettier": "^10.1.8",
 		"prettier": "3.6.2",
@@ -20,6 +25,13 @@
 	"dependencies": {
 		"@sapphire/framework": "^5.3.6",
 		"@sapphire/plugin-logger": "^4.1.0",
-		"discord.js": "^14.21.0"
+		"discord.js": "^14.21.0",
+		"drizzle-orm": "^0.44.4",
+		"postgres": "^3.4.7"
+	},
+	"imports": {
+		"#db/*": "./src/db/*.ts",
+		"#lib/*": "./src/lib/*.ts"
 	}
+
 }

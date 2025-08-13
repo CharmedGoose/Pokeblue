@@ -1,6 +1,8 @@
 import { ApplicationCommandRegistries, container, LogLevel, SapphireClient } from "@sapphire/framework";
 import { ActivityType, GatewayIntentBits } from "discord.js";
-import { $ } from "bun";
+import { BunSQLDatabase, drizzle } from "drizzle-orm/bun-sql";
+import { SQL, $ } from "bun";
+import * as schema from "#db/schema";
 
 export class PokeblueClient extends SapphireClient {
 	public constructor() {
@@ -27,6 +29,9 @@ export class PokeblueClient extends SapphireClient {
 			ApplicationCommandRegistries.setDefaultGuildIds([process.env.DISCORD_GUILD_ID]);
 		}
 
+		const client = new SQL(process.env.DATABASE_URL!);
+		container.db = drizzle({ client, schema });
+
 		const commitHash = await $`git rev-parse --short HEAD`.text();
 		const branch = (await $`git branch --show-current`.text()).trim();
 		container.embedFooter = `${branch}@${commitHash}`;
@@ -37,6 +42,9 @@ export class PokeblueClient extends SapphireClient {
 
 declare module "@sapphire/pieces" {
 	interface Container {
+		db: BunSQLDatabase<typeof schema> & {
+			$client: SQL;
+		};
 		embedFooter: string;
 	}
 }
