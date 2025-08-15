@@ -13,7 +13,7 @@ const waterPokemonGIF = await fetchGIFInfo(
 	`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/${starters[2].id}.gif`,
 );
 
-const gifBuffer = await createGIF(
+await createGIF(
 	1000,
 	500,
 	[
@@ -44,5 +44,3 @@ const gifBuffer = await createGIF(
 	],
 	"./src/assets/starterBackground.jpg",
 );
-
-await Bun.write(`./test.gif`, gifBuffer);
