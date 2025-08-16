@@ -1,5 +1,6 @@
 import { GIF_MAX_TOTAL_FRAMES, GIF_ACCEPTABLE_REMAINDER } from "#config";
-import { mkdtemp } from "node:fs/promises";
+import { roundToNearestEven } from "#lib/utils/math";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { $ } from "bun";
@@ -31,7 +32,7 @@ export async function fetchGIFInfo(url: string): Promise<GIFInfo> {
 
 	const getFrameCountProcess = $`ffprobe -v error -select_streams v:0 -count_packets -show_entries stream=nb_read_packets -of csv=p=0 ${path}`;
 	const getWidthProcess = $`ffprobe -v error -select_streams v:0 -show_entries stream=width -of default=noprint_wrappers=1:nokey=1 ${path}`;
-	const getHeightProcess = $`ffprobe -v warning -select_streams v:0 -show_entries stream=height -of default=noprint_wrappers=1:nokey=1 ${path}`;
+	const getHeightProcess = $`ffprobe -v error -select_streams v:0 -show_entries stream=height -of default=noprint_wrappers=1:nokey=1 ${path}`;
 
 	const frameCount = await getFrameCountProcess.text();
 	const width = await getWidthProcess.text();
@@ -40,16 +41,19 @@ export async function fetchGIFInfo(url: string): Promise<GIFInfo> {
 	return { frameCount: parseInt(frameCount), width: parseInt(width), height: parseInt(height), path };
 }
 
-export async function createGIF(width: number, height: number, gifs: GIFs[], backgroundPath: string): Promise<string> {
-	const time = Date.now();
-
+export async function createGIF(
+	width: number,
+	height: number,
+	gifs: GIFs[],
+	backgroundPath: string,
+): Promise<ArrayBuffer> {
 	const tmpPath = await mkdtemp(join(tmpdir(), "gif-"));
 	const outputGIFPath = join(tmpPath, "output.gif");
 
-	const frameCounts = gifs.map((gif) => 2 * Math.round(gif.gifInfo.frameCount / 2));
+	const frameCounts = gifs.map((gif) => roundToNearestEven(gif.gifInfo.frameCount));
 	const maxFrames = Math.max(...frameCounts);
-	let multiplier = 1;
 
+	let multiplier = 1;
 	while (multiplier * maxFrames < GIF_MAX_TOTAL_FRAMES) {
 		const workingWell = frameCounts.every((count) => {
 			const remainder = (multiplier * maxFrames) % count;
@@ -71,6 +75,9 @@ export async function createGIF(width: number, height: number, gifs: GIFs[], bac
 
 	const totalFrames = multiplier * maxFrames;
 
+	const paletteString =
+		"[s0]palettegen=reserve_transparent=1:stats_mode=full[p];[s1][p]paletteuse=new=1:alpha_threshold=128";
+
 	for (let i = 0; i < gifs.length; i++) {
 		const gif = gifs[i];
 		const gifMultiplier = Math.round(totalFrames / gif.gifInfo.frameCount);
@@ -85,21 +92,27 @@ export async function createGIF(width: number, height: number, gifs: GIFs[], bac
 				"-i",
 				gif.gifInfo.path,
 				"-filter_complex",
-				`split[s0][s1];[s0]palettegen=reserve_transparent=1:stats_mode=full[p];[s1][p]paletteuse=new=1:alpha_threshold=128`,
+				`split[s0][s1];${paletteString}`,
 				join(tmpPath, `${i}.gif`),
 			],
 		}).exited;
+
+		await Bun.file(gif.gifInfo.path).delete();
 	}
 
 	const gifInputArray = [];
-	let scaleString = `[0:v]scale=${width}:${height}[g0]`;
+	let scaleString = `[0:v]scale=${width}:${height}:flags=neighbor[g0]`;
 	let gifOverlayString = "";
 
 	for (let i = 0; i < gifs.length; i++) {
 		const gif = gifs[i];
 
 		const gifWidth = gif.width ? gif.width : gif.widthMultiplier ? gif.gifInfo.width * gif.widthMultiplier : 1;
-		const gifHeight = gif.height ? gif.height : gif.heightMultiplier ? gif.gifInfo.width * gif.heightMultiplier : 1;
+		const gifHeight = gif.height
+			? gif.height
+			: gif.heightMultiplier
+				? gif.gifInfo.height * gif.heightMultiplier
+				: 1;
 
 		const gifX = gif.bottomCenterPivot ? gif.x - gifWidth / 2 : gif.x;
 		const gifY = gif.bottomCenterPivot ? gif.y - gifHeight : gif.y;
@@ -107,6 +120,11 @@ export async function createGIF(width: number, height: number, gifs: GIFs[], bac
 		gifInputArray.push("-i", join(tmpPath, `${i}.gif`));
 
 		scaleString += `;[${i + 1}:v]scale=${gifWidth}:${gifHeight}:flags=neighbor[g${i + 1}]`;
+
+		if (gifs.length === 1) {
+			gifOverlayString = `[g0][g1]overlay=${gifX}:${gifY},split[s0][s1]`;
+			break;
+		}
 
 		if (i === 0) {
 			gifOverlayString = `[g0][g${i + 1}]overlay=${gifX}:${gifY}[bg${i + 1}]`;
@@ -117,8 +135,6 @@ export async function createGIF(width: number, height: number, gifs: GIFs[], bac
 		}
 	}
 
-	const filterString = `${scaleString};${gifOverlayString};[s0]palettegen=reserve_transparent=1:stats_mode=full[p];[s1][p]paletteuse=new=1:alpha_threshold=128`;
-
 	await Bun.spawn({
 		cmd: [
 			"ffmpeg",
@@ -128,12 +144,13 @@ export async function createGIF(width: number, height: number, gifs: GIFs[], bac
 			backgroundPath,
 			...gifInputArray,
 			"-filter_complex",
-			filterString,
+			`${scaleString};${gifOverlayString};${paletteString}`,
 			outputGIFPath,
 		],
 	}).exited;
 
-	console.log(`GIF created in ${Date.now() - time}ms`);
+	const output = await Bun.file(outputGIFPath).arrayBuffer();
+	await rm(tmpPath, { recursive: true, force: true });
 
-	return outputGIFPath;
+	return output;
 }
