@@ -1,2 +1,2 @@
-export const GIF_MAX_TOTAL_FRAMES = 120;
+export const GIF_MAX_TOTAL_FRAMES = 300;
 export const GIF_ACCEPTABLE_REMAINDER = 0.15
